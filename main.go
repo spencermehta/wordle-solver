@@ -79,19 +79,67 @@ func eliminateWords(guess, score string, possibleWords []string) []string {
       newPossibleWords = removeWordsContaining(guess[i], newPossibleWords)
     }
   }
+  newPossibleWords = removeWord(guess, newPossibleWords)
+  return newPossibleWords
+}
 
+func removeWord(word string, words []string) []string {
   var isIn bool
   var index int
-  for i, w := range newPossibleWords {
-    if w == guess {
+  for i, w := range words {
+    if w == word {
       isIn = true
       index = i
     }
   }
   if isIn {
-    newPossibleWords = append(newPossibleWords[0:index], newPossibleWords[index+1:]...)
+    words = append(words[0:index], words[index+1:]...)
   }
-  return newPossibleWords
+  return words
+}
+
+func letterEliminationScore(c byte, pos int, possibleWords []string) int {
+  greenElims := len(removeWordsLackingAtPos(c, pos, possibleWords))
+  greyElims := len(removeWordsContaining(c, possibleWords))
+  yellowElims := len(removeWordsLacking(c, possibleWords))
+
+  return greenElims + greyElims + yellowElims
+}
+
+func wordEliminationScore(word string, possibleWords []string) int {
+  var score int
+  for i := 0; i < len(word); i++ {
+    score += letterEliminationScore(word[i], i, possibleWords)
+  }
+  return score
+}
+
+func min(arr []int) (int, int) {
+  var mi, m int
+  for i, v := range arr {
+    if v < m {
+      mi = i
+      v = m
+    }
+  }
+  return mi, m
+}
+
+func getBestGuess(allowedWords, possibleWords []string) string {
+  var eliminationScores []int
+  var possEliminationScores []int
+  for _, word := range allowedWords {
+    eliminationScores = append(eliminationScores, wordEliminationScore(word, possibleWords))
+  }
+  for _, word := range possibleWords {
+    possEliminationScores = append(possEliminationScores, wordEliminationScore(word, possibleWords))
+  }
+  mi, _ := min(eliminationScores)
+  mip, _ := min(possEliminationScores)
+  if mi < mip {
+    return allowedWords[mi]
+  }
+  return possibleWords[mip]
 }
 
 func main() {
@@ -107,7 +155,8 @@ func main() {
 
   var guesses int
   for {
-    guess := possibleWords[0]
+    guess := getBestGuess(allowedWords, possibleWords)
+    allowedWords = removeWord(guess, allowedWords)
     guesses += 1
     fmt.Printf("Guess #%d: %v, %v, %d words left\n", guesses, guess, todaysWord, len(possibleWords))
     if guess == todaysWord {
