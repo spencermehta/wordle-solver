@@ -69,14 +69,14 @@ func removeWordsLackingAtPos(c byte, i int, possibleWords []string) []string {
 }
 
 func eliminateWords(guess, score string, possibleWords []string) []string {
-  var newPossibleWords []string
+  var newPossibleWords []string = possibleWords 
   for i := 0; i < len(guess); i++ {
     if score[i] == "2"[0] {
-      newPossibleWords = removeWordsLackingAtPos(guess[i], i, possibleWords)
+      newPossibleWords = removeWordsLackingAtPos(guess[i], i, newPossibleWords)
     } else if score[i] == "1"[0] {
-      newPossibleWords = removeWordsLacking(guess[i], possibleWords)
+      newPossibleWords = removeWordsLacking(guess[i], newPossibleWords)
     } else {
-      newPossibleWords = removeWordsContaining(guess[i], possibleWords)
+      newPossibleWords = removeWordsContaining(guess[i], newPossibleWords)
     }
   }
 
