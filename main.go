@@ -98,18 +98,34 @@ func removeWord(word string, words []string) []string {
   return words
 }
 
-func letterEliminationScore(c byte, pos int, possibleWords []string) int {
+func letterEliminationScore(c byte, pos int, repeat bool, possibleWords []string) int {
   greenElims := len(removeWordsLackingAtPos(c, pos, possibleWords))
-  greyElims := len(removeWordsContaining(c, possibleWords))
-  yellowElims := len(removeWordsLacking(c, possibleWords))
+  var yellowElims, greyElims int
+  if !repeat {
+    greyElims = len(removeWordsContaining(c, possibleWords))
+    yellowElims = len(removeWordsLacking(c, possibleWords))
+  }
 
   return greenElims + greyElims + yellowElims
 }
 
+func contains(c byte, arr []byte) bool {
+  var isIn bool
+  for _, char := range arr {
+    if c == char {
+      isIn = true
+    }
+  }
+  return isIn
+}
+
 func wordEliminationScore(word string, possibleWords []string) int {
   var score int
+  var usedChars []byte
   for i := 0; i < len(word); i++ {
-    score += letterEliminationScore(word[i], i, possibleWords)
+    repeat := contains(word[i], usedChars)
+    score += letterEliminationScore(word[i], i, repeat, possibleWords)
+    usedChars = append(usedChars, word[i])
   }
   return score
 }
