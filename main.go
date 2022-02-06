@@ -125,6 +125,17 @@ func min(arr []int) (int, int) {
   return mi, m
 }
 
+func max(arr []int) (int, int) {
+  var mi, m int
+  for i, v := range arr {
+    if v > m {
+      mi = i
+      v = m
+    }
+  }
+  return mi, m
+}
+
 func getBestGuess(allowedWords, possibleWords []string) string {
   var eliminationScores []int
   var possEliminationScores []int
@@ -134,9 +145,9 @@ func getBestGuess(allowedWords, possibleWords []string) string {
   for _, word := range possibleWords {
     possEliminationScores = append(possEliminationScores, wordEliminationScore(word, possibleWords))
   }
-  mi, _ := min(eliminationScores)
-  mip, _ := min(possEliminationScores)
-  if mi < mip {
+  mi, m := max(eliminationScores)
+  mip, mp := max(possEliminationScores)
+  if m > mp {
     return allowedWords[mi]
   }
   return possibleWords[mip]
