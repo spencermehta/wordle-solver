@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func readLines(path string) ([]string, error) {
@@ -169,29 +171,47 @@ func getBestGuess(allowedWords, possibleWords []string) string {
   return possibleWords[mip]
 }
 
-func main() {
-  allowedWords, err := readLines("wordle-allowed-guesses.txt")
-  possibleWords := allowedWords
-  if err != nil {
-    panic(err)
-  }
-
-  fmt.Print("Enter today's word:")
-  var todaysWord string
-  fmt.Scan(&todaysWord)
-
-  var guesses int
+func guessWord(todaysWord string, allowedWords, possibleWords []string) (int, []string) {
+  var numGuesses int
+  var guesses []string
   for {
     guess := getBestGuess(allowedWords, possibleWords)
+    guesses = append(guesses, guess)
     allowedWords = removeWord(guess, allowedWords)
-    guesses += 1
-    fmt.Printf("Guess #%d: %v, %v, %d words left\n", guesses, guess, todaysWord, len(possibleWords))
+    numGuesses += 1
     if guess == todaysWord {
-      fmt.Println("found!")
-      return
+      return numGuesses, guesses
     }
     score := getGuessScore(guess, todaysWord)
     possibleWords = eliminateWords(guess, score, possibleWords)
-    fmt.Println(len(possibleWords))
+  }
+}
+
+func main() {
+  allowedWords, err := readLines("wordle-allowed-guesses.txt")
+  if err != nil {
+    panic(err)
+  }
+  realAnswers, err := readLines("wordle-answers-alphabetical.txt")
+  if err != nil {
+    panic(err)
+  }
+  allowedWords = append(allowedWords, realAnswers...)
+  possibleWords := allowedWords
+
+  csvFile, err := os.Create("results.csv")
+  csvwriter := csv.NewWriter(csvFile)
+  defer csvFile.Close()
+
+  for i, word := range realAnswers {
+    fmt.Printf("Word %d/%d (%0.1f%%): %v\n", i, len(realAnswers), float64(i)/float64(len(realAnswers)), word )
+    start := time.Now()
+    numGuesses, guesses := guessWord(word, allowedWords, possibleWords)
+    err = csvwriter.Write(guesses)
+    if err != nil {
+      panic(err)
+    }
+    csvwriter.Flush()
+    fmt.Printf("Found in %d guesses in %0.2f seconds: %s\n", numGuesses, time.Since(start).Seconds(), guesses)
   }
 }
