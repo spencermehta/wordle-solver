@@ -8,10 +8,14 @@ import (
 )
 
 func main() {
-  possibleWords, allowedWords, _ := wordLists()
+  possibleWords, allowedWords, realAnswers := wordLists()
   patterns := patterns()
 
-  fmt.Println(bestWord(allowedWords, possibleWords, patterns))
+  for i, answer := range realAnswers {
+    fmt.Printf("Word %d/%d\t", i+1, len(realAnswers))
+    guesses, numGuesses := completeWordle(answer, allowedWords, possibleWords, patterns)
+    fmt.Printf("Completed in %d guesses: %s\n", numGuesses, guesses)
+  }
 }
 
 func wordLists() ([]string, []string, []string) {
@@ -29,13 +33,39 @@ func wordLists() ([]string, []string, []string) {
   return possibleWords, allowedWords, realAnswers
 }
 
-func bestWord( allowedWords, possibleWords, patterns []string) string {
-  var maxEi float64
+func completeWordle(realWord string, allowedWords, possibleWords, patterns []string) ([]string, int) {
+  guess := "tares" // hard coded first step since it takes forever to run
+  allowedWords = removeWord(guess, allowedWords)
+  var guesses []string
+  guesses = append(guesses, guess)
+  numGuesses := 1
+  for {
+    patt := generatePattern(realWord, guess)
+    possibleWords = eliminateWords(guess, patt, possibleWords)
+    guess = bestWord(allowedWords, possibleWords, patterns)
+    numGuesses += 1
+    allowedWords = removeWord(guess, allowedWords)
+    guesses = append(guesses, guess)
+    if guess == realWord {
+      break;
+    }
+  }
+  return guesses, numGuesses
+}
+
+func bestWord(allowedWords, possibleWords, patterns []string) string {
+  var maxEi float64 = -1
   bestWord := ""
-  for i, word := range allowedWords {
-    fmt.Printf("%d/%d\r\n", i, len(allowedWords))
+  for _, word := range allowedWords {
     ei := wordExpectedInformation(word, patterns, possibleWords)
     if ei > maxEi {
+      maxEi = ei
+      bestWord = word
+    }
+  }
+  for _, word := range possibleWords {
+    ei := wordExpectedInformation(word, patterns, possibleWords)
+    if ei >= maxEi {
       maxEi = ei
       bestWord = word
     }
@@ -43,11 +73,11 @@ func bestWord( allowedWords, possibleWords, patterns []string) string {
   return bestWord
 }
 
-func wordExpectedInformation(realWord string, patterns, possibleWords []string) float64 {
+func wordExpectedInformation(guess string, patterns, possibleWords []string) float64 {
   var sum float64
   for _, pattern := range patterns {
-    p := patternProbability(realWord, pattern, possibleWords) 
-    i := patternInformation(realWord, pattern, possibleWords)
+    p := patternProbability(guess, pattern, possibleWords) 
+    i := patternInformation(guess, pattern, possibleWords)
     var ei float64
     if !math.IsInf(i, 0){
       ei = p * i
@@ -59,38 +89,66 @@ func wordExpectedInformation(realWord string, patterns, possibleWords []string) 
   return sum
 }
 
-func patternInformation(realWord, pattern string, possibleWords []string) float64 {
-  return math.Log2(1.0/patternProbability(realWord, pattern, possibleWords))
+func patternInformation(guess, pattern string, possibleWords []string) float64 {
+  return math.Log2(1.0/patternProbability(guess, pattern, possibleWords))
 }
 
-func patternProbability(realWord, pattern string, possibleWords []string) float64 {
+func patternProbability(guess, pattern string, possibleWords []string) float64 {
   sum := 0
   for _, word := range possibleWords {
-    if matchesPattern(realWord, pattern, word) {
+    if matchesPattern(guess, pattern, word) {
       sum++
     }
   }
   return float64(sum)/float64(len(possibleWords))
 }
 
-func matchesPattern(realWord, pattern, word string) bool {
+func eliminateWords(guess, pattern string, possibleWords []string) []string {
+  var newPossiblewords []string
+  for _, word := range possibleWords {
+    if matchesPattern(guess, pattern, word) {
+      newPossiblewords = append(newPossiblewords, word)
+    } else {
+    }
+  }
+  return newPossiblewords
+}
+
+func matchesPattern(guess, pattern, word string) bool {
   for i, c := range pattern {
     switch c {
     case '0':
-      if contains(word, []rune(realWord)[i]) {
+      if contains(word, []rune(guess)[i]) {
         return false
       }
     case '1':
-      if !([]rune(realWord)[i] != []rune(word)[i] && contains(word, []rune(realWord)[i])) {
+      if !([]rune(guess)[i] != []rune(word)[i] && contains(word, []rune(guess)[i])) {
         return false
       }
     case '2':
-      if []rune(realWord)[i] != []rune(word)[i] {
+      if []rune(guess)[i] != []rune(word)[i] {
         return false
       }
     }
   }
   return true
+}
+
+func generatePattern(realWord, guess string) string {
+  pattern := ""
+  for i, c := range guess {
+    switch {
+    case c == []rune(realWord)[i]:
+      pattern += string('2')
+    case c != []rune(realWord)[i] && contains(realWord, c):
+      pattern += string('1')
+    case !contains(realWord, c):
+      pattern += string('0')
+    default:
+      pattern += string('!')
+    }
+  }
+  return pattern
 }
 
 func patterns() []string {
@@ -122,6 +180,21 @@ func patterns() []string {
   }
 
   return patterns
+}
+
+func removeWord(word string, words []string) []string {
+  var isIn bool
+  var index int
+  for i, w := range words {
+    if w == word {
+      isIn = true
+      index = i
+    }
+  }
+  if isIn {
+    words = append(words[0:index], words[index+1:]...)
+  }
+  return words
 }
 
 func contains(arr string, c rune) bool {
